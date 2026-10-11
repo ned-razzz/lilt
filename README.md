@@ -25,9 +25,10 @@ Lilt brings English practice into the prompt you are already writing. It helps y
 
 ## What you get
 
-- **Natural English from mixed drafts.** Translate Korean fragments and correct awkward English with the smallest necessary changes.
-- **Your technical intent stays intact.** The coaching instructions preserve requirements, paths, commands, code, identifiers, and numbers, and keep already-correct English unchanged.
+- **Clearer prompts from mixed drafts.** Translate Korean fragments and improve wording and structure so your task, purpose, constraints, and expected outcome are easy to understand.
+- **Your technical intent stays intact.** The coaching instructions preserve meaning, requirements, paths, commands, code, identifiers, and numbers. Revisions use only intent clearly supported by your draft.
 - **Brief learning notes in Korean.** See explanations for up to three useful corrections alongside the suggested prompt.
+- **Recommendations for unclear details.** A separate Korean section suggests how to clarify ambiguous goals, scope, or expected results. These suggestions are kept separate from the revised prompt for you to decide.
 - **An editor you control.** Review the suggestion in a read-only Vim pane and edit your original draft yourself. Suggestions are never applied automatically.
 - **A fallback when coaching fails.** If the model call fails or returns no suggestion, Lilt opens the original draft in Vim so you can continue editing.
 
@@ -37,7 +38,7 @@ After installation, open a new PowerShell terminal and run `codex`.
 
 1. Write your prompt in the Codex input box, using English, Korean, or both.
 2. Press **Ctrl+G** to request a suggestion and open Vim.
-3. Edit the original draft on the left. The right pane shows the suggested English prompt and Korean learning notes.
+3. Edit the original draft on the left. The right pane shows the suggested English prompt, Korean learning notes, and recommendations for unclear details.
 4. Use **Ctrl+W, L** or **Ctrl+W, H** to move between panes.
 5. Run **`:wqa`** to save and return the edited draft to Codex.
 6. Review the prompt and press **Enter** when you are ready to submit it.

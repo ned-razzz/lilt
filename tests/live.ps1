@@ -61,7 +61,7 @@ Keep `parseTokens`, `npm test`, and `const timeout = 5000;` unchanged.
         # Confirm the model kept technical literals, returned Korean notes, and used expected settings.
         $suggestedPrompt = [System.IO.File]::ReadAllText((Join-Path $sandboxPath 'suggestion.md'))
         Write-Host $suggestedPrompt
-        foreach ($literal in @('## Suggested Prompt', '## Learning Notes', 'src\parser.ts',
+        foreach ($literal in @('## Suggested Prompt', '## Learning Notes', '## Recommendations', 'src\parser.ts',
                 'parseTokens', 'npm test', 'const timeout = 5000;')) {
             if (-not $suggestedPrompt.Contains($literal)) { throw "Suggestion did not preserve: $literal" }
         }
