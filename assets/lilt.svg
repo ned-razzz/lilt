@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112" role="img" aria-labelledby="title desc">
+  <title id="title">Lilt</title>
+  <desc id="desc">A mint letter L flowing into a smooth rising curve, with a purple dot above its tip, inside a rounded navy square.</desc>
+  <rect x="8" y="8" width="96" height="96" rx="26" fill="#282f4c"/>
+  <path d="M35 32v40q0 7 7 7c14 0 19-18.8 35-18.8" fill="none" stroke="#9ae8cc" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="77" cy="41.2" r="5" fill="#b9a6ff"/>
+</svg>
