@@ -16,7 +16,7 @@ There is no separate build step. Run commands from the repository root with Powe
 
 ## Coding Style & Naming Conventions
 
-Use four spaces for PowerShell indentation, `$camelCase` for local variables and parameters, and approved `Verb-Noun` names for functions. Use lowercase directory names and descriptive filenames such as `codex-prompt-coach.ps1`. Keep scripts compatible with PowerShell 7 and use literal-path APIs for filesystem operations. No formatter or linter is configured; follow the surrounding style.
+Use four spaces for PowerShell indentation, `$camelCase` for local variables and parameters, and approved `Verb-Noun` names for reusable helper functions. Standalone scripts may use a shared `Main` function as their entry point, called once at the end of the file. Use `$script:` for state shared by a script's entry point and helpers; reserve `$global:` for values that must be visible process-wide. Use lowercase directory names and descriptive filenames such as `codex-prompt-coach.ps1`. Keep scripts compatible with PowerShell 7 and use literal-path APIs for filesystem operations. No formatter or linter is configured; follow the surrounding style.
 
 ## Testing Guidelines
 
