@@ -39,7 +39,7 @@ Codex 실행 파일과 소스는 수정하지 않는다. PowerShell 프로필에
       lilt.cmd
       lilt.ps1
     prompts/
-      coach-prompt.txt
+      editing-feedback-prompt.txt
     enable.ps1
     codex-function.ps1
   scripts/

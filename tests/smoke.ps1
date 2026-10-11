@@ -168,7 +168,7 @@ exit 0
         Test-Condition ([System.IO.File]::ReadAllText($testProfile + '.lilt.bak') -ceq $existingProfileText) 'Profile backup did not preserve the original.'
         Test-Condition ((Test-Path -LiteralPath $PROFILE) -eq $profileExisted) 'Installer changed profile existence.'
         if ($profileExisted) { Test-Condition ([System.IO.File]::ReadAllText($PROFILE) -ceq $profileBefore) 'Installer changed the profile.' }
-        foreach ($file in @('enable.ps1', 'bin\lilt.cmd', 'bin\lilt.ps1', 'prompts\coach-prompt.txt')) {
+        foreach ($file in @('enable.ps1', 'bin\lilt.cmd', 'bin\lilt.ps1', 'prompts\editing-feedback-prompt.txt')) {
             Test-Condition (Test-Path -LiteralPath (Join-Path $installPath $file)) "Installed file is missing: $file"
         }
         $passedScenarioCount++

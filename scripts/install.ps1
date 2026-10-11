@@ -55,7 +55,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Dependency check failed. No installation files
 
 $InstallPath = [System.IO.Path]::GetFullPath($InstallPath)
 foreach ($relativePath in @('bin\lilt.cmd', 'bin\lilt.ps1',
-        'prompts\coach-prompt.txt', 'enable.ps1', 'codex-function.ps1')) {
+        'prompts\editing-feedback-prompt.txt', 'enable.ps1', 'codex-function.ps1')) {
     $sourcePath = Join-Path $sourceRoot $relativePath
     $targetPath = Join-Path $InstallPath $relativePath
     if ([System.IO.Path]::GetFullPath($sourcePath) -eq $targetPath) { continue }

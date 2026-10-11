@@ -7,7 +7,7 @@ param(
 
 # Script-wide configuration keeps the invocation details out of Main's execution flow.
 $script:utf8Encoding = [System.Text.UTF8Encoding]::new($false)
-$script:coachPromptPath = Join-Path $PSScriptRoot '..\prompts\coach-prompt.txt'
+$script:coachPromptPath = Join-Path $PSScriptRoot '..\prompts\editing-feedback-prompt.txt'
 $script:baseEditorArguments = @(
     '--clean', '-n', '--cmd', 'set encoding=utf-8 nomodeline'
     '-c', 'setlocal fileencoding=utf-8'
