@@ -75,7 +75,7 @@ if ($tool -eq 'codex') {
     if ($env:COACH_TEST_MODE -eq 'codex-fails') { [Console]::Error.WriteLine('Fake model unavailable'); exit 23 }
     if ($env:COACH_TEST_MODE -eq 'suggestion-missing') { exit 0 }
     $suggestion = if ($env:COACH_TEST_MODE -eq 'suggestion-empty') { ' ' } else {
-        "## Suggested Prompt`nPlease fix the code.`n`n## Learning Notes`n- 한국어를 영어로 옮겼습니다.`n`n## Recommendations`n- 수정 대상과 기대 결과를 구체적으로 알려주세요."
+        "## Suggested Prompt`nPlease fix the code.`n`n## Changes`n- 영어 프롬프트로 사용할 수 있도록 한국어를 영어로 옮겼습니다.`n`n## Recommendations`n- 수정 대상과 기대 결과를 구체적으로 알려주세요."
     }
     [IO.File]::WriteAllText($record.Output, $suggestion, [Text.UTF8Encoding]::new($false))
     exit 0
