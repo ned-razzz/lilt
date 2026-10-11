@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$CoachRoot = (Join-Path $env:USERPROFILE '.codex-prompt-coach')
+    [string]$CoachRoot = (Join-Path $env:USERPROFILE '.lilt')
 )
 
 # Opt-in end-to-end check: one real model call plus a real Vim edit/save in batch mode.
@@ -10,7 +10,7 @@ function Main {
     $PSNativeCommandUseErrorActionPreference = $false
     $systemTempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
     $script:tempDirectoryPrefix = $systemTempRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
-    $sandboxPath = Join-Path $systemTempRoot ('coach-live-' + [guid]::NewGuid())
+    $sandboxPath = Join-Path $systemTempRoot ('lilt-live-' + [guid]::NewGuid())
     [System.IO.Directory]::CreateDirectory($sandboxPath) | Out-Null
     $previousProbeDirectory = $env:COACH_LIVE_DIR
     $previousProbeVim = $env:COACH_LIVE_VIM
@@ -19,7 +19,7 @@ function Main {
         # Enable the installed coach, then redirect its Vim call through a probe that saves artifacts.
         & (Join-Path $CoachRoot 'enable.ps1')
         $env:COACH_LIVE_DIR = $sandboxPath
-        $env:COACH_LIVE_VIM = $env:CODEX_PROMPT_COACH_VIM
+        $env:COACH_LIVE_VIM = $env:LILT_VIM
         # The probe captures the model output and invocation log before the coach removes its temp files.
         $vimProbeScript = @'
 $ErrorActionPreference = 'Stop'
@@ -55,8 +55,8 @@ Please analyze `src\parser.ts` and 성능 저하의 원인을 찾아줘.
 Keep `parseTokens`, `npm test`, and `const timeout = 5000;` unchanged.
 '@
         [System.IO.File]::WriteAllText($draftFilePath, $draftText, [System.Text.UTF8Encoding]::new($false))
-        $env:CODEX_PROMPT_COACH_VIM = Join-Path $sandboxPath 'editor-probe.cmd'
-        & (Join-Path $CoachRoot 'bin\codex-prompt-coach.cmd') $draftFilePath
+        $env:LILT_VIM = Join-Path $sandboxPath 'editor-probe.cmd'
+        & (Join-Path $CoachRoot 'bin\lilt.cmd') $draftFilePath
         if ($LASTEXITCODE -ne 0) { throw 'Live coach/editor test failed.' }
         # Confirm the model kept technical literals, returned Korean notes, and used expected settings.
         $suggestedPrompt = [System.IO.File]::ReadAllText((Join-Path $sandboxPath 'suggestion.md'))

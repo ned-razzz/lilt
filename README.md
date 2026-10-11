@@ -58,12 +58,12 @@ The installer can find Vim bundled with Git for Windows. If it cannot locate Vim
 pwsh -NoProfile -File .\scripts\install.ps1 -VimPath 'C:\path\vim.exe'
 ```
 
-Lilt currently installs to `%USERPROFILE%\.codex-prompt-coach`. The installer adds a `codex` launcher to your PowerShell profile, preserves existing profile content, and creates a backup before first modifying an existing profile. Open a new PowerShell terminal to load the launcher. Automatic activation requires a profile-loading PowerShell session; `pwsh -NoProfile` bypasses it.
+Lilt currently installs to `%USERPROFILE%\.lilt`. The installer adds a `codex` launcher to your PowerShell profile, preserves existing profile content, and creates a backup before first modifying an existing profile. Open a new PowerShell terminal to load the launcher. Automatic activation requires a profile-loading PowerShell session; `pwsh -NoProfile` bypasses it.
 
 To remove the launcher from your profile, run the following command and restart PowerShell:
 
 ```powershell
-pwsh -NoProfile -File "$env:USERPROFILE\.codex-prompt-coach\install.ps1" -Uninstall
+pwsh -NoProfile -File "$env:USERPROFILE\.lilt\install.ps1" -Uninstall
 ```
 
 You can then delete the installation folder to remove the remaining files.

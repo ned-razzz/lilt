@@ -42,7 +42,7 @@ function Main {
             throw "Draft file does not exist: $DraftPath"
         }
         $draftFilePath = (Resolve-Path -LiteralPath $DraftPath).ProviderPath
-        $vimExecutablePath = $env:CODEX_PROMPT_COACH_VIM
+        $vimExecutablePath = $env:LILT_VIM
         if (-not $vimExecutablePath -or
             -not (Test-Path -LiteralPath $vimExecutablePath -PathType Leaf)) {
             throw 'Vim is not configured. Run enable.ps1 in this PowerShell session first.'
@@ -55,7 +55,7 @@ function Main {
         # Empty drafts go straight to Vim. Coaching errors also fall back to draft-only editing.
         if (-not [string]::IsNullOrWhiteSpace($draftText)) {
             try {
-                $correctionDirectory = Join-Path $systemTempRoot ('codex-coach-' + [guid]::NewGuid())
+                $correctionDirectory = Join-Path $systemTempRoot ('lilt-' + [guid]::NewGuid())
                 [System.IO.Directory]::CreateDirectory($correctionDirectory) | Out-Null
                 $suggestionFilePath = Join-Path $correctionDirectory 'suggestion.md'
                 $invocationLogPath = Join-Path $correctionDirectory 'codex.log'

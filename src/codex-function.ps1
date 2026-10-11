@@ -3,8 +3,8 @@
 & {
     function Main {
         # These values and the launcher must survive after profile loading finishes.
-        $global:CodexPromptCoachInstallRoot = $PSScriptRoot
-        $global:CodexPromptCoachConfiguredVim = $null
+        $global:LiltInstallRoot = $PSScriptRoot
+        $global:LiltConfiguredVim = $null
 
         function global:codex {
             $PSNativeCommandUseErrorActionPreference = $false
@@ -19,18 +19,18 @@
             $codexExecutablePath = $codexApplication.Source
 
             # Child processes inherit this marker; nested Codex calls bypass activation.
-            if ($env:CODEX_PROMPT_COACH_ACTIVE -eq '1') {
+            if ($env:LILT_ACTIVE -eq '1') {
                 & $codexExecutablePath @codexArguments
                 return
             }
 
-            $previousActiveMarker = [Environment]::GetEnvironmentVariable('CODEX_PROMPT_COACH_ACTIVE', 'Process')
-            $existingSession = Get-Variable CodexPromptCoachSession -Scope Global -ErrorAction SilentlyContinue
+            $previousActiveMarker = [Environment]::GetEnvironmentVariable('LILT_ACTIVE', 'Process')
+            $existingSession = Get-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue
             $sessionAlreadyEnabled = $null -ne $existingSession
-            $enableScriptPath = Join-Path $global:CodexPromptCoachInstallRoot 'enable.ps1'
+            $enableScriptPath = Join-Path $global:LiltInstallRoot 'enable.ps1'
             $enableParameters = @{ Quiet = $true }
-            if ($global:CodexPromptCoachConfiguredVim) {
-                $enableParameters.VimPath = $global:CodexPromptCoachConfiguredVim
+            if ($global:LiltConfiguredVim) {
+                $enableParameters.VimPath = $global:LiltConfiguredVim
             }
             $codexExitCode = 1
 
@@ -39,7 +39,7 @@
                 if (-not $sessionAlreadyEnabled) {
                     & $enableScriptPath @enableParameters
                 }
-                $env:CODEX_PROMPT_COACH_ACTIVE = '1'
+                $env:LILT_ACTIVE = '1'
                 & $codexExecutablePath @codexArguments
                 $codexExitCode = $LASTEXITCODE
             }
@@ -49,10 +49,10 @@
             finally {
                 # Restore the marker and only disable the session this invocation created.
                 if ($null -eq $previousActiveMarker) {
-                    Remove-Item -LiteralPath Env:CODEX_PROMPT_COACH_ACTIVE -ErrorAction SilentlyContinue
+                    Remove-Item -LiteralPath Env:LILT_ACTIVE -ErrorAction SilentlyContinue
                 }
                 else {
-                    $env:CODEX_PROMPT_COACH_ACTIVE = $previousActiveMarker
+                    $env:LILT_ACTIVE = $previousActiveMarker
                 }
                 if (-not $sessionAlreadyEnabled) {
                     & $enableScriptPath -Disable -Quiet

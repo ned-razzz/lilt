@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$InstallPath = (Join-Path $env:USERPROFILE '.codex-prompt-coach'),
+    [string]$InstallPath = (Join-Path $env:USERPROFILE '.lilt'),
     [string]$VimPath,
     [string]$ProfilePath = $PROFILE,
     [switch]$Uninstall
@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
-if (-not $IsWindows) { throw 'Codex Prompt Coach requires Windows and PowerShell 7.' }
+if (-not $IsWindows) { throw 'Lilt requires Windows and PowerShell 7.' }
 
 # In the repository this script lives in scripts/ and sources files from src/.
 # After installation it lives beside those files and can update or uninstall itself.
@@ -21,9 +21,9 @@ $readmeRoot = if ($sourceRoot -ne $PSScriptRoot) { $repositoryRoot } else { $PSS
 $readmePath = Join-Path $readmeRoot 'README.md'
 
 $profilePath = [System.IO.Path]::GetFullPath($ProfilePath)
-$profileStart = '# >>> Codex Prompt Coach >>>'
-$profileEnd = '# <<< Codex Prompt Coach <<<'
-$profilePattern = '(?ms)^# >>> Codex Prompt Coach >>>\r?\n.*?^# <<< Codex Prompt Coach <<<\r?\n?'
+$profileStart = '# >>> Lilt >>>'
+$profileEnd = '# <<< Lilt <<<'
+$profilePattern = '(?ms)^# >>> Lilt >>>\r?\n.*?^# <<< Lilt <<<\r?\n?'
 $profileText = if (Test-Path -LiteralPath $profilePath -PathType Leaf) {
     [System.IO.File]::ReadAllText($profilePath)
 } else { '' }
@@ -38,10 +38,10 @@ if ($Uninstall) {
         else {
             [System.IO.File]::WriteAllText($profilePath, $profileText, [System.Text.UTF8Encoding]::new($true))
         }
-        Write-Host 'Removed the Codex Prompt Coach launcher from the PowerShell profile.'
+        Write-Host 'Removed the Lilt launcher from the PowerShell profile.'
     }
     else {
-        Write-Host 'The Codex Prompt Coach launcher is not in the PowerShell profile.'
+        Write-Host 'The Lilt launcher is not in the PowerShell profile.'
     }
     Write-Host 'Restart PowerShell to use the updated profile.'
     return
@@ -54,7 +54,7 @@ if ($VimPath) { $checkArgs += @('-VimPath', $VimPath) }
 if ($LASTEXITCODE -ne 0) { throw 'Dependency check failed. No installation files were changed.' }
 
 $InstallPath = [System.IO.Path]::GetFullPath($InstallPath)
-foreach ($relativePath in @('bin\codex-prompt-coach.cmd', 'bin\codex-prompt-coach.ps1',
+foreach ($relativePath in @('bin\lilt.cmd', 'bin\lilt.ps1',
         'prompts\coach-prompt.txt', 'enable.ps1', 'codex-function.ps1')) {
     $sourcePath = Join-Path $sourceRoot $relativePath
     $targetPath = Join-Path $InstallPath $relativePath
@@ -79,7 +79,7 @@ $configuredVim = if ($VimPath) {
 $profileBlock = @"
 $profileStart
 . '$quotedFunctionPath'
-`$global:CodexPromptCoachConfiguredVim = $configuredVim
+`$global:LiltConfiguredVim = $configuredVim
 $profileEnd
 "@
 if ($profileHasBlock) {
@@ -90,7 +90,7 @@ else {
     $profileDirectory = Split-Path $profilePath -Parent
     [System.IO.Directory]::CreateDirectory($profileDirectory) | Out-Null
     if (Test-Path -LiteralPath $profilePath -PathType Leaf) {
-        Copy-Item -LiteralPath $profilePath -Destination ($profilePath + '.codex-prompt-coach.bak') -Force
+        Copy-Item -LiteralPath $profilePath -Destination ($profilePath + '.lilt.bak') -Force
     }
     if ($profileText -and -not $profileText.EndsWith("`n") -and -not $profileText.EndsWith("`r")) {
         $profileText += $separator

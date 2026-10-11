@@ -1,4 +1,4 @@
-# Codex Prompt Coach
+# Lilt
 
 ## 영어 프롬프트 교정 도구 구현 보고서
 
@@ -19,7 +19,7 @@ Codex CLI에서 작성한 영어·한국어 혼합 프롬프트를 자연스러�
 새 PowerShell 터미널에서 codex 실행
     → 프로필의 codex 함수가 enable.ps1을 자동 실행
     → 프롬프트 작성 중 Ctrl+G
-    → VISUAL의 codex-prompt-coach.cmd
+    → VISUAL의 lilt.cmd
     → PowerShell 교정 스크립트
     → codex exec: gpt-6-luna medium
     → Vim 좌우 분할: 왼쪽 원문 / 오른쪽 읽기 전용 제안
@@ -36,8 +36,8 @@ Codex 실행 파일과 소스는 수정하지 않는다. PowerShell 프로필에
 프로젝트/
   src/
     bin/
-      codex-prompt-coach.cmd
-      codex-prompt-coach.ps1
+      lilt.cmd
+      lilt.ps1
     prompts/
       coach-prompt.txt
     enable.ps1
@@ -50,7 +50,7 @@ Codex 실행 파일과 소스는 수정하지 않는다. PowerShell 프로필에
     live.ps1
 ```
 
-저장소에서는 설치 대상 코드를 `src/`, 설치 진입 스크립트를 `scripts/`에 둔다. `scripts/install.ps1`은 의존성을 확인하고 `src/`의 파일을 `%USERPROFILE%\.codex-prompt-coach`에 설치한 뒤 PowerShell 프로필에 등록 블록을 추가한다. 설치 후 복사된 `install.ps1`은 설치 파일 옆에서 실행되어 재설치와 제거를 지원한다. 재설치 시 프로필 블록을 갱신하고, 기존 프로필은 최초 수정 시 백업한다. `-Uninstall`은 등록 블록만 제거한다. 다른 설치 경로는 `-InstallPath`, 다른 프로필은 `-ProfilePath`로 지정할 수 있다.
+저장소에서는 설치 대상 코드를 `src/`, 설치 진입 스크립트를 `scripts/`에 둔다. `scripts/install.ps1`은 의존성을 확인하고 `src/`의 파일을 `%USERPROFILE%\.lilt`에 설치한 뒤 PowerShell 프로필에 등록 블록을 추가한다. 설치 후 복사된 `install.ps1`은 설치 파일 옆에서 실행되어 재설치와 제거를 지원한다. 재설치 시 프로필 블록을 갱신하고, 기존 프로필은 최초 수정 시 백업한다. `-Uninstall`은 등록 블록만 제거한다. 다른 설치 경로는 `-InstallPath`, 다른 프로필은 `-ProfilePath`로 지정할 수 있다.
 
 현재 PC에는 다음 버전으로 설치하고 검증했다.
 
@@ -59,7 +59,7 @@ Codex 실행 파일과 소스는 수정하지 않는다. PowerShell 프로필에
 | PowerShell | 7.6.6 |
 | Codex CLI | 0.161.0, 기존 ChatGPT 로그인 사용 |
 | Vim | Git for Windows에 포함된 9.2 |
-| 설치 위치 | `C:\Users\smg99\.codex-prompt-coach` |
+| 설치 위치 | `C:\Users\smg99\.lilt` |
 
 ## 3. 세션 활성화와 Git 편집기
 
@@ -73,14 +73,14 @@ codex
 |---|---|
 | `VISUAL` | 공백 경로를 지원하도록 따옴표로 감싼 CMD 래퍼 경로를 지정한다. |
 | `GIT_EDITOR` | 기존 값이 있으면 유지한다. 없으면 `VISUAL` 변경 전에 `git var GIT_EDITOR`로 확인한 편집기를 지정한다. |
-| `CODEX_PROMPT_COACH_VIM` | 교정 스크립트가 사용할 실제 Vim 경로를 지정한다. 이 도구 자체의 변수이며 Codex가 직접 읽는 변수는 아니다. |
+| `LILT_VIM` | 교정 스크립트가 사용할 실제 Vim 경로를 지정한다. 이 도구 자체의 변수이며 Codex가 직접 읽는 변수는 아니다. |
 
 현재 PC의 기존 Git 편집기는 `C:/Program Files/Git/usr/bin/vim.exe`다. Codex가 실행한 Git도 이 편집기를 사용한다. 다른 터미널에는 변경이 전달되지 않는다. 같은 세션에서 `VISUAL`을 사용하는 Git 이외의 프로그램은 교정기를 호출할 수 있다.
 
 반복 활성화 시 최초 환경변수 값을 보존한다. 다음 명령은 그 값을 복원하며, 원래 없었던 변수는 제거한다.
 
 ```powershell
-& "$env:USERPROFILE\.codex-prompt-coach\enable.ps1" -Disable
+& "$env:USERPROFILE\.lilt\enable.ps1" -Disable
 ```
 
 설치 후 새 PowerShell을 열면 `codex` 함수가 자동 등록된다. 함수가 내부적으로 `enable.ps1`을 실행하고 실제 `codex.exe`에 인수를 전달한 뒤, 종료 시 환경변수를 복원한다. 수동으로 이미 활성화한 세션은 그대로 유지한다. 하위 PowerShell에서 중첩 실행할 때는 표시 변수를 확인해 재활성화를 생략한다.

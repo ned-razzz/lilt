@@ -28,23 +28,23 @@ function Main {
     $script:tempDirectoryPrefix = $systemTempRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
 
     # Helpers share these paths through script scope instead of process-wide global variables.
-    $script:sandboxPath = Join-Path $systemTempRoot ('coach-tests-' + [guid]::NewGuid())
+    $script:sandboxPath = Join-Path $systemTempRoot ('lilt-tests-' + [guid]::NewGuid())
     [System.IO.Directory]::CreateDirectory($script:sandboxPath) | Out-Null
     $script:draftFilePath = $null
     $script:coachWrapperPath = $null
 
     $originalEnvironment = @{}
-    foreach ($name in @('PATH', 'VISUAL', 'EDITOR', 'GIT_EDITOR', 'CODEX_PROMPT_COACH_VIM',
-            'COACH_TEST_DIR', 'COACH_TEST_MODE', 'COACH_REAL_VIM', 'CODEX_PROMPT_COACH_ACTIVE')) {
+    foreach ($name in @('PATH', 'VISUAL', 'EDITOR', 'GIT_EDITOR', 'LILT_VIM',
+            'COACH_TEST_DIR', 'COACH_TEST_MODE', 'COACH_REAL_VIM', 'LILT_ACTIVE')) {
         $originalEnvironment[$name] = [System.Environment]::GetEnvironmentVariable($name, 'Process')
     }
-    $previousCoachSession = Get-Variable CodexPromptCoachSession -Scope Global -ErrorAction SilentlyContinue
+    $previousCoachSession = Get-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue
     $passedScenarioCount = 0
 
     try {
         # Arrange an isolated PATH where the coach finds our fake native commands first.
-        $env:CODEX_PROMPT_COACH_ACTIVE = $null
-        if ($previousCoachSession) { Remove-Variable CodexPromptCoachSession -Scope Global }
+        $env:LILT_ACTIVE = $null
+        if ($previousCoachSession) { Remove-Variable LiltSession -Scope Global }
         $realVimPath = Join-Path (Split-Path (Get-Command git -CommandType Application).Source -Parent) '..\usr\bin\vim.exe'
         if (-not (Test-Path -LiteralPath $realVimPath)) {
             $realVimPath = (Get-Command vim -CommandType Application -ErrorAction Stop).Source
@@ -53,10 +53,10 @@ function Main {
         $fakeToolDirectory = Join-Path $script:sandboxPath '한글 space [fixtures]'
         [System.IO.Directory]::CreateDirectory($fakeToolDirectory) | Out-Null
         $script:draftFilePath = Join-Path $fakeToolDirectory 'draft [한글].txt'
-        $script:coachWrapperPath = Join-Path $repositoryRoot 'src\bin\codex-prompt-coach.cmd'
+        $script:coachWrapperPath = Join-Path $repositoryRoot 'src\bin\lilt.cmd'
         $env:COACH_TEST_DIR = $script:sandboxPath
         $env:PATH = $fakeToolDirectory + ';' + $env:PATH
-        $env:CODEX_PROMPT_COACH_VIM = Join-Path $fakeToolDirectory 'vim.cmd'
+        $env:LILT_VIM = Join-Path $fakeToolDirectory 'vim.cmd'
 
         # These shims record arguments and input, then simulate success, failure, or edits.
         $fakeNative = @'
@@ -157,32 +157,32 @@ exit 0
         $script:installerScriptPath = Join-Path $repositoryRoot 'scripts\install.ps1'
         $script:installerParameters = @{
             InstallPath = $installPath
-            VimPath = $env:CODEX_PROMPT_COACH_VIM
+            VimPath = $env:LILT_VIM
             ProfilePath = $testProfile
         }
         & $script:installerScriptPath @script:installerParameters
         & $script:installerScriptPath @script:installerParameters
         $managedProfile = [System.IO.File]::ReadAllText($testProfile)
-        Test-Condition (([regex]::Matches($managedProfile, '# >>> Codex Prompt Coach >>>')).Count -eq 1) 'Repeated installation duplicated the profile block.'
+        Test-Condition (([regex]::Matches($managedProfile, '# >>> Lilt >>>')).Count -eq 1) 'Repeated installation duplicated the profile block.'
         Test-Condition ($managedProfile.StartsWith($existingProfileText)) 'Installer changed existing profile settings.'
-        Test-Condition ([System.IO.File]::ReadAllText($testProfile + '.codex-prompt-coach.bak') -ceq $existingProfileText) 'Profile backup did not preserve the original.'
+        Test-Condition ([System.IO.File]::ReadAllText($testProfile + '.lilt.bak') -ceq $existingProfileText) 'Profile backup did not preserve the original.'
         Test-Condition ((Test-Path -LiteralPath $PROFILE) -eq $profileExisted) 'Installer changed profile existence.'
         if ($profileExisted) { Test-Condition ([System.IO.File]::ReadAllText($PROFILE) -ceq $profileBefore) 'Installer changed the profile.' }
-        foreach ($file in @('enable.ps1', 'bin\codex-prompt-coach.cmd', 'bin\codex-prompt-coach.ps1', 'prompts\coach-prompt.txt')) {
+        foreach ($file in @('enable.ps1', 'bin\lilt.cmd', 'bin\lilt.ps1', 'prompts\coach-prompt.txt')) {
             Test-Condition (Test-Path -LiteralPath (Join-Path $installPath $file)) "Installed file is missing: $file"
         }
         $passedScenarioCount++
 
         # Load the test profile and exercise automatic, nested, and manually enabled sessions.
         . $testProfile
-        Test-Condition ($global:CodexPromptCoachConfiguredVim -ceq $env:CODEX_PROMPT_COACH_VIM) 'The configured Vim path was not retained by the profile.'
+        Test-Condition ($global:LiltConfiguredVim -ceq $env:LILT_VIM) 'The configured Vim path was not retained by the profile.'
         $autoVisual = $env:VISUAL
         $autoGitEditor = $env:GIT_EDITOR
-        $autoVim = $env:CODEX_PROMPT_COACH_VIM
+        $autoVim = $env:LILT_VIM
         $version = codex --version | Out-String
         Test-Condition ($LASTEXITCODE -eq 0 -and $version -match 'codex-cli') 'Automatic launcher did not forward --version to the real Codex CLI.'
-        Test-Condition ($env:VISUAL -ceq $autoVisual -and $env:GIT_EDITOR -ceq $autoGitEditor -and $env:CODEX_PROMPT_COACH_VIM -ceq $autoVim) 'Automatic launcher did not restore the editor environment.'
-        Test-Condition ($null -eq $env:CODEX_PROMPT_COACH_ACTIVE) 'Automatic launcher leaked its child-process marker.'
+        Test-Condition ($env:VISUAL -ceq $autoVisual -and $env:GIT_EDITOR -ceq $autoGitEditor -and $env:LILT_VIM -ceq $autoVim) 'Automatic launcher did not restore the editor environment.'
+        Test-Condition ($null -eq $env:LILT_ACTIVE) 'Automatic launcher leaked its child-process marker.'
         $passedScenarioCount++
 
         codex --coach-invalid-option 2>&1 | Out-Null
@@ -192,14 +192,14 @@ exit 0
         & (Join-Path $installPath 'enable.ps1') -VimPath $autoVim -Quiet
         $manuallyEnabledVisual = $env:VISUAL
         codex --version | Out-Null
-        Test-Condition ($LASTEXITCODE -eq 0 -and $env:VISUAL -ceq $manuallyEnabledVisual -and (Get-Variable CodexPromptCoachSession -Scope Global -ErrorAction SilentlyContinue)) 'Automatic launcher disabled a manually enabled session.'
+        Test-Condition ($LASTEXITCODE -eq 0 -and $env:VISUAL -ceq $manuallyEnabledVisual -and (Get-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue)) 'Automatic launcher disabled a manually enabled session.'
         & (Join-Path $installPath 'enable.ps1') -Disable -Quiet
         $passedScenarioCount++
 
-        $env:CODEX_PROMPT_COACH_ACTIVE = '1'
+        $env:LILT_ACTIVE = '1'
         $version = codex --version | Out-String
         Test-Condition ($LASTEXITCODE -eq 0 -and $version -match 'codex-cli' -and $env:VISUAL -ceq $autoVisual) 'Nested Codex invocation did not bypass the launcher.'
-        $env:CODEX_PROMPT_COACH_ACTIVE = $null
+        $env:LILT_ACTIVE = $null
         $passedScenarioCount++
 
         # Uninstall must remove only Lilt's managed block from the profile.
@@ -210,7 +210,7 @@ exit 0
         # Session activation must preserve existing values and restore originally unset values.
         $env:VISUAL = 'original-visual'
         $env:GIT_EDITOR = 'existing-git-editor --wait'
-        $oldVim = $env:CODEX_PROMPT_COACH_VIM
+        $oldVim = $env:LILT_VIM
         & (Join-Path $installPath 'enable.ps1') -VimPath $oldVim
         $enabledVisual = $env:VISUAL
         Test-Condition ($env:GIT_EDITOR -ceq 'existing-git-editor --wait') 'Existing GIT_EDITOR was overwritten.'
@@ -218,7 +218,7 @@ exit 0
         Test-Condition ($env:VISUAL -ceq $enabledVisual) 'Repeated activation is not stable.'
         & (Join-Path $installPath 'enable.ps1') -Disable
         Test-Condition ($env:VISUAL -ceq 'original-visual' -and $env:GIT_EDITOR -ceq 'existing-git-editor --wait') 'Deactivation did not restore the original environment.'
-        Test-Condition ($env:CODEX_PROMPT_COACH_VIM -ceq $oldVim) 'Deactivation did not restore the Vim path.'
+        Test-Condition ($env:LILT_VIM -ceq $oldVim) 'Deactivation did not restore the Vim path.'
         $passedScenarioCount++
 
         $env:GIT_EDITOR = $null
@@ -245,7 +245,7 @@ call deletebufline('%', 2, '$')
 wqa
 '@
         Set-Content -LiteralPath (Join-Path $script:sandboxPath 'verify-editor.vim') -Value $vimChecks -Encoding utf8
-        $script:coachWrapperPath = Join-Path $installPath 'bin\codex-prompt-coach.cmd'
+        $script:coachWrapperPath = Join-Path $installPath 'bin\lilt.cmd'
         Invoke-CoachScenario 'run-real-vim' $mixedDraft
         Test-Condition ($coachExitCode -eq 0) 'Real Vim split, readonly, or saving validation failed.'
         Test-Condition ([System.IO.File]::ReadAllText($draftFilePath).TrimEnd() -ceq 'Edited in Vim: 영어 UTF-8') 'Vim did not save only the edited draft in UTF-8.'
@@ -262,8 +262,8 @@ wqa
                 [System.Environment]::SetEnvironmentVariable($name, $originalEnvironment[$name], 'Process')
             }
         }
-        Remove-Variable CodexPromptCoachSession -Scope Global -ErrorAction SilentlyContinue
-        if ($previousCoachSession) { $global:CodexPromptCoachSession = $previousCoachSession.Value }
+        Remove-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue
+        if ($previousCoachSession) { $global:LiltSession = $previousCoachSession.Value }
         $cleanupPath = [System.IO.Path]::GetFullPath($sandboxPath)
         $allowedPrefix = $script:tempDirectoryPrefix
         if ($cleanupPath.StartsWith($allowedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {

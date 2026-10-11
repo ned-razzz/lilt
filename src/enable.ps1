@@ -7,8 +7,8 @@ param(
 )
 
 # Configuration shared by Main and the Vim resolver, scoped to this script.
-$script:coachWrapperPath = Join-Path $PSScriptRoot 'bin\codex-prompt-coach.cmd'
-$script:editorEnvironmentNames = @('VISUAL', 'GIT_EDITOR', 'CODEX_PROMPT_COACH_VIM')
+$script:coachWrapperPath = Join-Path $PSScriptRoot 'bin\lilt.cmd'
+$script:editorEnvironmentNames = @('VISUAL', 'GIT_EDITOR', 'LILT_VIM')
 
 function Resolve-VimPath([string]$requestedPath, [string]$gitExecutablePath) {
     if ($requestedPath) {
@@ -24,7 +24,7 @@ function Resolve-VimPath([string]$requestedPath, [string]$gitExecutablePath) {
     $gitDirectory = Split-Path $gitExecutablePath -Parent
     $bundledVimPath = Join-Path $gitDirectory '..\usr\bin\vim.exe'
     $candidatePaths = @(
-        $env:CODEX_PROMPT_COACH_VIM
+        $env:LILT_VIM
         $vimOnPath.Source
         ([string]$env:EDITOR).Trim('"')
         ([string]$env:VISUAL).Trim('"')
@@ -43,7 +43,7 @@ function Resolve-VimPath([string]$requestedPath, [string]$gitExecutablePath) {
 function Main {
     $ErrorActionPreference = 'Stop'
     $PSNativeCommandUseErrorActionPreference = $false
-    $sessionState = Get-Variable CodexPromptCoachSession -Scope Global -ErrorAction SilentlyContinue
+    $sessionState = Get-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue
 
     # Disable needs no external programs: restore the snapshot from the first activation.
     if ($Disable) {
@@ -57,7 +57,7 @@ function Main {
                     [System.Environment]::SetEnvironmentVariable($name, $originalValue, 'Process')
                 }
             }
-            Remove-Variable CodexPromptCoachSession -Scope Global
+            Remove-Variable LiltSession -Scope Global
         }
         if (-not $Quiet) { Write-Host 'Prompt coaching disabled in this PowerShell session.' }
         return
@@ -84,14 +84,14 @@ function Main {
     # This snapshot must outlive this script so a later -Disable call can restore it.
     # Repeated activation preserves the first snapshot instead of replacing it.
     if (-not $sessionState) {
-        $global:CodexPromptCoachSession = @{}
+        $global:LiltSession = @{}
         foreach ($name in $script:editorEnvironmentNames) {
-            $global:CodexPromptCoachSession[$name] =
+            $global:LiltSession[$name] =
                 [System.Environment]::GetEnvironmentVariable($name, 'Process')
         }
     }
     $env:GIT_EDITOR = $gitEditor
-    $env:CODEX_PROMPT_COACH_VIM = $resolvedVimPath
+    $env:LILT_VIM = $resolvedVimPath
     $env:VISUAL = '"' + $script:coachWrapperPath + '"'
     if (-not $Quiet) {
         Write-Host 'Prompt coaching enabled in this PowerShell session. Run codex, then press Ctrl+G.'
