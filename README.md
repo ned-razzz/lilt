@@ -30,7 +30,7 @@ Lilt brings English practice into the prompt you are already writing. It helps y
 - **Every edit explained in Korean.** See each individual change and its reason, with a brief explanation per item.
 - **Recommendations for unclear details.** A separate Korean section suggests how to clarify ambiguous goals, scope, or expected results. These suggestions are kept separate from the revised prompt for you to decide.
 - **An editor you control.** Review the suggestion in a read-only Vim pane and edit your original draft yourself. Suggestions are never applied automatically.
-- **A fallback when coaching fails.** If the model call fails or returns no suggestion, Lilt opens the original draft in Vim so you can continue editing.
+- **Start editing immediately.** Vim opens while coaching runs in the background. If coaching fails, the suggestion pane shows an error and you can keep editing.
 
 ## Using Lilt
 
@@ -38,12 +38,14 @@ After installation, open a new PowerShell terminal and run `codex`.
 
 1. Write your prompt in the Codex input box, using English, Korean, or both.
 2. Press **Ctrl+G** to request a suggestion and open Vim.
-3. Edit the original draft on the left. The right pane shows the suggested English prompt, brief Korean explanations of every edit, and recommendations for unclear details.
+3. Edit the original draft on the left. The right pane initially shows **Coaching...**, then automatically displays the suggested English prompt, Korean explanations of every edit, and recommendations without moving your cursor.
 4. Use **Ctrl+W, L** or **Ctrl+W, H** to move between panes.
 5. Run **`:wqa`** to save and return the edited draft to Codex.
 6. Review the prompt and press **Enter** when you are ready to submit it.
 
 Use `:qa!` to discard unsaved edits and exit. Changes you have already saved are not undone. Empty drafts open directly in Vim without a model call.
+
+The suggestion uses the draft as it was when you pressed Ctrl+G. Editing does not start another model call. You can exit before coaching finishes; Lilt cancels the unfinished call.
 
 ## Installation
 
@@ -75,7 +77,7 @@ Lilt uses PowerShell and a small CMD wrapper to connect Codex's external-editor 
 
 For a nonempty draft, Lilt sends UTF-8 text to a separate `codex exec` call using **`gpt-6-luna` with `medium` reasoning**. The coaching call uses an ephemeral session, ignores user configuration, and disables shell tools, plugins, hooks, apps, multi-agent execution, the code host, and web search. These settings apply to the coaching call. Your coding session keeps its model and tool settings.
 
-The response is saved temporarily and opened beside the draft in Vim. Vim runs with a clean configuration, modelines and swap files disabled, and the suggestion pane read-only. Temporary coaching files are removed after the editor exits.
+Vim opens beside a temporary suggestion file while a hidden PowerShell worker makes the model call. A Vim timer updates only the suggestion buffer after the complete response is ready. Vim runs with a clean configuration, modelines and swap files disabled, and the suggestion pane read-only. Exiting Vim stops unfinished coaching and removes temporary coaching files.
 
 Runtime scripts and the coaching prompt live in `src/`; the installer lives in `scripts/`. There is no build step. Run the automated checks with:
 

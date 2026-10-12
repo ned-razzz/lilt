@@ -12,19 +12,6 @@ $script:baseEditorArguments = @(
     '--clean', '-n', '--cmd', 'set encoding=utf-8 nomodeline'
     '-c', 'setlocal fileencoding=utf-8'
 )
-$script:suggestionPaneCommand = 'wincmd l | setlocal readonly nomodifiable | wincmd h'
-$script:baseCodexArguments = @(
-    'exec', '--model', 'gpt-6-luna'
-    '-c', 'model_reasoning_effort="medium"'
-    '-c', 'approval_policy="never"'
-    '-c', 'web_search="disabled"'
-    # Keep coaching separate from the user's coding session and configuration.
-    '--ignore-user-config', '--ephemeral', '--sandbox', 'read-only'
-    '--disable', 'shell_tool', '--disable', 'plugins'
-    '--disable', 'hooks', '--disable', 'apps', '--disable', 'multi_agent'
-    '--disable', 'code_mode_host', '--skip-git-repo-check'
-    '--color', 'never'
-)
 $script:exitCode = 1
 
 function Main {
@@ -35,6 +22,7 @@ function Main {
     $systemTempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
     $allowedTempPrefix = $systemTempRoot.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
     $correctionDirectory = $null
+    $coachProcess = $null
 
     try {
         # Validate both inputs before reading the draft or calling external programs.
@@ -52,13 +40,12 @@ function Main {
         $editorArguments = @($script:baseEditorArguments)
         $editorFiles = @($draftFilePath)
 
-        # Empty drafts go straight to Vim. Coaching errors also fall back to draft-only editing.
+        # Empty drafts go straight to Vim; nonempty drafts get a live suggestion pane.
         if (-not [string]::IsNullOrWhiteSpace($draftText)) {
             try {
                 $correctionDirectory = Join-Path $systemTempRoot ('lilt-' + [guid]::NewGuid())
                 [System.IO.Directory]::CreateDirectory($correctionDirectory) | Out-Null
                 $suggestionFilePath = Join-Path $correctionDirectory 'suggestion.md'
-                $invocationLogPath = Join-Path $correctionDirectory 'codex.log'
 
                 # JSON encoding preserves the draft as text, including paths, quotes, and newlines.
                 $coachingInstructions = [System.IO.File]::ReadAllText($script:coachPromptPath, [System.Text.Encoding]::UTF8)
@@ -66,28 +53,19 @@ function Main {
                 $coachingRequest = $coachingInstructions + "`n`nDRAFT (JSON-encoded text):`n" + $encodedDraft
                 $codexApplication = Get-Command codex -CommandType Application -ErrorAction Stop |
                     Select-Object -First 1
-                $codexArguments = @($script:baseCodexArguments) + @(
-                    '-C', $correctionDirectory
-                    '--output-last-message', $suggestionFilePath, '-'
-                )
+                [IO.File]::WriteAllText((Join-Path $correctionDirectory 'request.txt'), $coachingRequest, $script:utf8Encoding)
+                [IO.File]::WriteAllText($suggestionFilePath, "Coaching...`nYou can edit your draft while the suggestion is prepared.", $script:utf8Encoding)
 
-                Write-Host 'Coaching your prompt with gpt-6-luna (medium)...'
-                $coachingRequest | & $codexApplication.Source @codexArguments > $invocationLogPath 2>&1
-                if ($LASTEXITCODE -ne 0) {
-                    $logTail = Get-Content -LiteralPath $invocationLogPath -Tail 3 -Encoding utf8
-                    $failureDetails = $logTail -join ' '
-                    throw "Codex exited with code $LASTEXITCODE. $failureDetails"
+                # A hidden worker owns the model call; Vim keeps the terminal immediately.
+                $processInfo = [Diagnostics.ProcessStartInfo]::new((Join-Path $PSHOME 'pwsh.exe'))
+                $processInfo.UseShellExecute = $false
+                $processInfo.CreateNoWindow = $true
+                foreach ($argument in @('-NoLogo', '-NoProfile', '-File', (Join-Path $PSScriptRoot 'coach.ps1'),
+                        '-CorrectionDirectory', $correctionDirectory, '-CodexPath', $codexApplication.Source)) {
+                    $processInfo.ArgumentList.Add($argument)
                 }
-                if (-not (Test-Path -LiteralPath $suggestionFilePath -PathType Leaf)) {
-                    throw 'Codex returned no suggestion.'
-                }
-                $suggestionText = [System.IO.File]::ReadAllText($suggestionFilePath)
-                if ([string]::IsNullOrWhiteSpace($suggestionText)) {
-                    throw 'Codex returned no suggestion.'
-                }
-
-                # Add the suggestion only after a usable response exists; the draft remains editable.
-                $editorArguments += @('-O', '-c', $script:suggestionPaneCommand)
+                $coachProcess = [Diagnostics.Process]::Start($processInfo)
+                $editorArguments += @('-O', '-S', (Join-Path $PSScriptRoot 'suggestion.vim').Replace('\', '/'))
                 $editorFiles += $suggestionFilePath
             }
             catch {
@@ -107,6 +85,14 @@ function Main {
     finally {
         # Always restore encoding and remove only the correction directory inside the system temp root.
         $OutputEncoding = $previousOutputEncoding
+        # Leaving Vim cancels unfinished coaching, including its native child process.
+        if ($coachProcess) {
+            if (-not $coachProcess.HasExited) {
+                $coachProcess.Kill($true)
+                $coachProcess.WaitForExit()
+            }
+            $coachProcess.Dispose()
+        }
         if ($correctionDirectory) {
             $cleanupPath = [System.IO.Path]::GetFullPath($correctionDirectory)
             if ($cleanupPath.StartsWith($allowedTempPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {

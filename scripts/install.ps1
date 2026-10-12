@@ -54,7 +54,7 @@ if ($VimPath) { $checkArgs += @('-VimPath', $VimPath) }
 if ($LASTEXITCODE -ne 0) { throw 'Dependency check failed. No installation files were changed.' }
 
 $InstallPath = [System.IO.Path]::GetFullPath($InstallPath)
-foreach ($relativePath in @('bin\lilt.cmd', 'bin\lilt.ps1',
+foreach ($relativePath in @('bin\lilt.cmd', 'bin\lilt.ps1', 'bin\coach.ps1', 'bin\suggestion.vim',
         'prompts\editing-feedback-prompt.txt', 'enable.ps1', 'codex-function.ps1')) {
     $sourcePath = Join-Path $sourceRoot $relativePath
     $targetPath = Join-Path $InstallPath $relativePath

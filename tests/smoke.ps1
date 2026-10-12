@@ -72,6 +72,11 @@ if ($tool -eq 'codex') {
     $record.Output = $nativeArgs[$outputIndex + 1]
     $record.WorkDir = $nativeArgs[[array]::IndexOf($nativeArgs, '-C') + 1]
     $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:COACH_TEST_DIR 'codex.json') -Encoding utf8
+    if ($env:COACH_TEST_MODE -eq 'early-exit') {
+        [IO.File]::WriteAllText((Join-Path $env:COACH_TEST_DIR 'worker.pid'), [string]$PID)
+        Start-Sleep -Seconds 30
+    }
+    Start-Sleep -Milliseconds 500
     if ($env:COACH_TEST_MODE -eq 'codex-fails') { [Console]::Error.WriteLine('Fake model unavailable'); exit 23 }
     if ($env:COACH_TEST_MODE -eq 'suggestion-missing') { exit 0 }
     $suggestion = if ($env:COACH_TEST_MODE -eq 'suggestion-empty') { ' ' } else {
@@ -84,6 +89,22 @@ if ($tool -eq 'codex') {
 $fileIndex = [array]::IndexOf($nativeArgs, '--')
 $record.Files = @($nativeArgs | Select-Object -Skip ($fileIndex + 1))
 $record.Draft = [IO.File]::ReadAllText($record.Files[0])
+$record.InitialSuggestion = if ($record.Files.Count -eq 2) { [IO.File]::ReadAllText($record.Files[1]) } else { $null }
+if ($record.Files.Count -eq 2) {
+    $readyPath = Join-Path (Split-Path $record.Files[1] -Parent) 'ready'
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    if ($env:COACH_TEST_MODE -eq 'early-exit') {
+        while (-not (Test-Path -LiteralPath (Join-Path $env:COACH_TEST_DIR 'worker.pid'))) {
+            if ([DateTime]::UtcNow -gt $deadline) { throw 'Worker did not start.' }
+            Start-Sleep -Milliseconds 50
+        }
+    } elseif ($env:COACH_TEST_MODE -ne 'run-real-vim') {
+        while (-not (Test-Path -LiteralPath $readyPath)) {
+            if ([DateTime]::UtcNow -gt $deadline) { throw 'Coaching did not finish.' }
+            Start-Sleep -Milliseconds 50
+        }
+    }
+}
 $record.Suggestion = if ($record.Files.Count -eq 2) { [IO.File]::ReadAllText($record.Files[1]) } else { $null }
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:COACH_TEST_DIR 'vim.json') -Encoding utf8
 if ($env:COACH_TEST_MODE -eq 'editor-exits-with-error') { exit 7 }
@@ -112,6 +133,7 @@ exit 0
         # A successful correction preserves the draft and passes the expected options to both tools.
         Invoke-CoachScenario 'success' $mixedDraft
         Test-Condition ($coachExitCode -eq 0 -and $editorCall.Files.Count -eq 2) 'Successful correction must open two files.'
+        Test-Condition ($editorCall.InitialSuggestion.StartsWith('Coaching...')) 'Editor must open with a pending suggestion.'
         Test-Condition ([System.IO.File]::ReadAllText($draftFilePath) -ceq $mixedDraft) 'The coach overwrote the original draft.'
         Test-Condition ($codexCall.Input.Contains('성능 문제') -and $editorCall.Suggestion.Contains('한국어')) 'UTF-8 was corrupted.'
         $configArgs = @($codexCall.Args | ForEach-Object { $_.Replace('"', '') })
@@ -127,7 +149,7 @@ exit 0
         # Model failures and unusable responses should still open the original draft for editing.
         foreach ($scenarioName in @('codex-fails', 'suggestion-empty', 'suggestion-missing')) {
             Invoke-CoachScenario $scenarioName $mixedDraft
-            Test-Condition ($coachExitCode -eq 0 -and $editorCall.Files.Count -eq 1) "$scenarioName must fall back to the original editor."
+            Test-Condition ($coachExitCode -eq 0 -and $editorCall.Files.Count -eq 2 -and $editorCall.Suggestion.Contains('Coaching unavailable:')) "$scenarioName must show a failure in the suggestion pane."
             Test-Condition ([System.IO.File]::ReadAllText($draftFilePath) -ceq $mixedDraft) "$scenarioName changed the draft."
             Test-Condition (-not (Test-Path -LiteralPath $codexCall.WorkDir)) "$scenarioName did not clean up its temp directory."
             $passedScenarioCount++
@@ -142,6 +164,11 @@ exit 0
         $passedScenarioCount++
         Invoke-CoachScenario 'editor-exits-with-error' $mixedDraft
         Test-Condition ($coachExitCode -eq 7 -and [System.IO.File]::ReadAllText($draftFilePath) -ceq $mixedDraft) 'CMD must propagate the editor failure without overwriting the draft.'
+        $passedScenarioCount++
+        Invoke-CoachScenario 'early-exit' $mixedDraft
+        $workerProcessId = [int][IO.File]::ReadAllText((Join-Path $script:sandboxPath 'worker.pid'))
+        Test-Condition ($null -eq (Get-Process -Id $workerProcessId -ErrorAction SilentlyContinue)) 'Exiting Vim must terminate unfinished coaching.'
+        Test-Condition (-not (Test-Path -LiteralPath $codexCall.WorkDir)) 'Cancelled coaching files were not removed.'
         $passedScenarioCount++
         & $coachWrapperPath (Join-Path $fakeToolDirectory 'nonexistent.txt') 2>&1 | Out-Null
         Test-Condition ($LASTEXITCODE -ne 0) 'Invalid draft path must fail.'
@@ -168,7 +195,7 @@ exit 0
         Test-Condition ([System.IO.File]::ReadAllText($testProfile + '.lilt.bak') -ceq $existingProfileText) 'Profile backup did not preserve the original.'
         Test-Condition ((Test-Path -LiteralPath $PROFILE) -eq $profileExisted) 'Installer changed profile existence.'
         if ($profileExisted) { Test-Condition ([System.IO.File]::ReadAllText($PROFILE) -ceq $profileBefore) 'Installer changed the profile.' }
-        foreach ($file in @('enable.ps1', 'bin\lilt.cmd', 'bin\lilt.ps1', 'prompts\editing-feedback-prompt.txt')) {
+        foreach ($file in @('enable.ps1', 'bin\lilt.cmd', 'bin\lilt.ps1', 'bin\coach.ps1', 'bin\suggestion.vim', 'prompts\editing-feedback-prompt.txt')) {
             Test-Condition (Test-Path -LiteralPath (Join-Path $installPath $file)) "Installed file is missing: $file"
         }
         $passedScenarioCount++
@@ -242,6 +269,14 @@ if &modifiable != 0 || &readonly != 1 | cquit 92 | endif
 wincmd h
 call setline(1, 'Edited in Vim: 영어 UTF-8')
 call deletebufline('%', 2, '$')
+let suggestion = winbufnr(2)
+let deadline = reltime()
+while getbufline(suggestion, 1)[0] !~ '^## Suggested Prompt'
+    if reltimefloat(reltime(deadline)) > 10 | cquit 93 | endif
+    sleep 100m
+endwhile
+if winnr() != 1 || getline(1) !=# 'Edited in Vim: 영어 UTF-8' | cquit 94 | endif
+if getbufvar(suggestion, '&modifiable') != 0 || getbufvar(suggestion, '&readonly') != 1 | cquit 95 | endif
 wqa
 '@
         Set-Content -LiteralPath (Join-Path $script:sandboxPath 'verify-editor.vim') -Value $vimChecks -Encoding utf8

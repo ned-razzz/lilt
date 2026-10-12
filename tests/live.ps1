@@ -27,13 +27,14 @@ $nativeArgs = @($args)
 $fileIndex = [array]::IndexOf($nativeArgs, '--')
 $files = @($nativeArgs | Select-Object -Skip ($fileIndex + 1))
 if ($files.Count -ne 2) { throw 'Live correction did not produce a suggestion.' }
-Copy-Item -LiteralPath $files[1] -Destination (Join-Path $env:COACH_LIVE_DIR 'suggestion.md')
-Copy-Item -LiteralPath (Join-Path (Split-Path $files[1] -Parent) 'codex.log') -Destination (Join-Path $env:COACH_LIVE_DIR 'execution.log')
 $vimArgs = @($nativeArgs | Select-Object -First $fileIndex) +
     @('-es', '-S', (Join-Path $env:COACH_LIVE_DIR 'verify.vim').Replace('\', '/')) +
     @($nativeArgs | Select-Object -Skip $fileIndex)
 & $env:COACH_LIVE_VIM @vimArgs
-exit $LASTEXITCODE
+$vimExitCode = $LASTEXITCODE
+Copy-Item -LiteralPath $files[1] -Destination (Join-Path $env:COACH_LIVE_DIR 'suggestion.md')
+Copy-Item -LiteralPath (Join-Path (Split-Path $files[1] -Parent) 'codex.log') -Destination (Join-Path $env:COACH_LIVE_DIR 'execution.log')
+exit $vimExitCode
 '@
         Set-Content -LiteralPath (Join-Path $sandboxPath 'editor-probe.ps1') -Value $vimProbeScript -Encoding utf8
         $vimProbeShim = "@echo off`r`npwsh.exe -NoLogo -NoProfile -File `"%~dp0editor-probe.ps1`" %*`r`nexit /b %ERRORLEVEL%`r`n"
@@ -46,6 +47,14 @@ if &modifiable != 0 || &readonly != 1 | cquit 92 | endif
 wincmd h
 call setline(1, 'User saved this prompt: 영어')
 call deletebufline('%', 2, '$')
+let suggestion = winbufnr(2)
+let deadline = reltime()
+while getbufline(suggestion, 1)[0] !~ '^## Suggested Prompt'
+    if getbufline(suggestion, 1)[0] =~ '^Coaching unavailable:' | cquit 93 | endif
+    if reltimefloat(reltime(deadline)) > 60 | cquit 94 | endif
+    sleep 100m
+endwhile
+if winnr() != 1 || getline(1) !=# 'User saved this prompt: 영어' | cquit 95 | endif
 wqa
 '@
         Set-Content -LiteralPath (Join-Path $sandboxPath 'verify.vim') -Value $vimAssertions -Encoding utf8
