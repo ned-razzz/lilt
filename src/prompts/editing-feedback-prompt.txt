@@ -35,6 +35,3 @@ Output only these three Markdown sections. Do not fence the entire response.
 ## Changes
 [Every individual edit as a separate Korean bullet: what changed and why, stated
 briefly; no item limit. If unchanged, say so briefly.]
-
-## Recommendations
-[Up to three actionable clarifications in Korean, or a brief statement that none are needed]
