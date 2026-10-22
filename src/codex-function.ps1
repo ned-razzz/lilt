@@ -1,30 +1,28 @@
 # Loaded from the managed block in the PowerShell profile.
 # Run registration in a temporary scope so Main does not remain in the user's profile.
 & {
-    function Main {
-        # These values and the launcher must survive after profile loading finishes.
-        $global:LiltInstallRoot = $PSScriptRoot
-        $global:LiltConfiguredVim = $null
-
-        function global:codex {
+    function Register-Launcher([string]$agentName) {
+        # The closure keeps $agentName; the launcher must survive after profile loading finishes.
+        Set-Item -Path "Function:\global:$agentName" -Value {
             $PSNativeCommandUseErrorActionPreference = $false
-            $codexArguments = @($args)
-            $codexApplication = Get-Command codex.exe -CommandType Application -ErrorAction SilentlyContinue |
+            $agentArguments = @($args)
+            $agentApplication = Get-Command "$agentName.exe" -CommandType Application -ErrorAction SilentlyContinue |
                 Select-Object -First 1
-            if (-not $codexApplication) {
-                Write-Error 'Codex CLI (codex.exe) was not found on PATH.'
+            if (-not $agentApplication) {
+                Write-Error "$agentName CLI ($agentName.exe) was not found on PATH."
                 $global:LASTEXITCODE = 1
                 return
             }
-            $codexExecutablePath = $codexApplication.Source
+            $agentExecutablePath = $agentApplication.Source
 
-            # Child processes inherit this marker; nested Codex calls bypass activation.
+            # Child processes inherit this marker; nested agent calls bypass activation.
             if ($env:LILT_ACTIVE -eq '1') {
-                & $codexExecutablePath @codexArguments
+                & $agentExecutablePath @agentArguments
                 return
             }
 
             $previousActiveMarker = [Environment]::GetEnvironmentVariable('LILT_ACTIVE', 'Process')
+            $previousAgent = [Environment]::GetEnvironmentVariable('LILT_AGENT', 'Process')
             $existingSession = Get-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue
             $sessionAlreadyEnabled = $null -ne $existingSession
             $enableScriptPath = Join-Path $global:LiltInstallRoot 'enable.ps1'
@@ -32,7 +30,7 @@
             if ($global:LiltConfiguredVim) {
                 $enableParameters.VimPath = $global:LiltConfiguredVim
             }
-            $codexExitCode = 1
+            $agentExitCode = 1
 
             try {
                 # Activate only when the caller has not already enabled coaching manually.
@@ -40,28 +38,38 @@
                     & $enableScriptPath @enableParameters
                 }
                 $env:LILT_ACTIVE = '1'
-                & $codexExecutablePath @codexArguments
-                $codexExitCode = $LASTEXITCODE
+                $env:LILT_AGENT = $agentName
+                & $agentExecutablePath @agentArguments
+                $agentExitCode = $LASTEXITCODE
             }
             catch {
                 Write-Error $_
             }
             finally {
-                # Restore the marker and only disable the session this invocation created.
-                if ($null -eq $previousActiveMarker) {
-                    Remove-Item -LiteralPath Env:LILT_ACTIVE -ErrorAction SilentlyContinue
-                }
-                else {
-                    $env:LILT_ACTIVE = $previousActiveMarker
+                # Restore the markers and only disable the session this invocation created.
+                foreach ($entry in @(@('LILT_ACTIVE', $previousActiveMarker), @('LILT_AGENT', $previousAgent))) {
+                    if ($null -eq $entry[1]) {
+                        Remove-Item -LiteralPath "Env:$($entry[0])" -ErrorAction SilentlyContinue
+                    }
+                    else {
+                        Set-Item -LiteralPath "Env:$($entry[0])" -Value $entry[1]
+                    }
                 }
                 if (-not $sessionAlreadyEnabled) {
                     & $enableScriptPath -Disable -Quiet
                 }
             }
-            $global:LASTEXITCODE = $codexExitCode
-        }
+            $global:LASTEXITCODE = $agentExitCode
+        }.GetNewClosure()
     }
 
-    # Entry point: register the persistent launcher, then discard this temporary scope.
+    function Main {
+        $global:LiltInstallRoot = $PSScriptRoot
+        $global:LiltConfiguredVim = $null
+        Register-Launcher 'codex'
+        Register-Launcher 'claude'
+    }
+
+    # Entry point: register the persistent launchers, then discard this temporary scope.
     Main
 }

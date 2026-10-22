@@ -100,6 +100,6 @@ else {
 [System.IO.File]::WriteAllText($profilePath, $profileText, [System.Text.UTF8Encoding]::new($true))
 
 Write-Host "Installed to $InstallPath"
-Write-Host "Registered a Codex launcher in $profilePath. Restart PowerShell to use it."
-Write-Host 'It applies the editor setting only while Codex runs in that session.'
-Write-Host 'codex'
+Write-Host "Registered codex and claude launchers in $profilePath. Restart PowerShell to use it."
+Write-Host 'It applies the editor setting only while codex or claude runs in that session.'
+Write-Host "codex`nclaude"

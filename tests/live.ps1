@@ -33,7 +33,7 @@ $vimArgs = @($nativeArgs | Select-Object -First $fileIndex) +
 & $env:COACH_LIVE_VIM @vimArgs
 $vimExitCode = $LASTEXITCODE
 Copy-Item -LiteralPath $files[1] -Destination (Join-Path $env:COACH_LIVE_DIR 'suggestion.md')
-Copy-Item -LiteralPath (Join-Path (Split-Path $files[1] -Parent) 'codex.log') -Destination (Join-Path $env:COACH_LIVE_DIR 'execution.log')
+Copy-Item -LiteralPath (Join-Path (Split-Path $files[1] -Parent) 'agent.log') -Destination (Join-Path $env:COACH_LIVE_DIR 'execution.log')
 exit $vimExitCode
 '@
         Set-Content -LiteralPath (Join-Path $sandboxPath 'editor-probe.ps1') -Value $vimProbeScript -Encoding utf8

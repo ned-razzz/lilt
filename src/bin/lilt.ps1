@@ -51,7 +51,9 @@ function Main {
                 $coachingInstructions = [System.IO.File]::ReadAllText($script:coachPromptPath, [System.Text.Encoding]::UTF8)
                 $encodedDraft = ConvertTo-Json -InputObject $draftText -Compress
                 $coachingRequest = $coachingInstructions + "`n`nDRAFT (JSON-encoded text):`n" + $encodedDraft
-                $codexApplication = Get-Command codex -CommandType Application -ErrorAction Stop |
+                # The launcher that started the session names the CLI that also coaches.
+                $agentName = if ($env:LILT_AGENT -eq 'claude') { 'claude' } else { 'codex' }
+                $agentApplication = Get-Command $agentName -CommandType Application -ErrorAction Stop |
                     Select-Object -First 1
                 [IO.File]::WriteAllText((Join-Path $correctionDirectory 'request.txt'), $coachingRequest, $script:utf8Encoding)
                 [IO.File]::WriteAllText($suggestionFilePath, "Coaching...`nYou can edit your draft while the suggestion is prepared.", $script:utf8Encoding)
@@ -61,7 +63,8 @@ function Main {
                 $processInfo.UseShellExecute = $false
                 $processInfo.CreateNoWindow = $true
                 foreach ($argument in @('-NoLogo', '-NoProfile', '-File', (Join-Path $PSScriptRoot 'coach.ps1'),
-                        '-CorrectionDirectory', $correctionDirectory, '-CodexPath', $codexApplication.Source)) {
+                        '-CorrectionDirectory', $correctionDirectory, '-Agent', $agentName,
+                        '-AgentPath', $agentApplication.Source)) {
                     $processInfo.ArgumentList.Add($argument)
                 }
                 $coachProcess = [Diagnostics.Process]::Start($processInfo)

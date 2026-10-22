@@ -176,3 +176,10 @@ Windows 네이티브 의사 터미널에서 실제 Codex CLI와 Vim을 실행해
 MVP 구현, 현재 PC 설치, 오류 복구, 세션 활성화·해제, 자동·실제 모델·대화형 CLI 검증을 완료했다.
 
 비동기 교정을 지원한다. 수정 표현 강조, 학습 기록, 선택 문장 교정, 사용자 Vim 플러그인 연동, WSL 지원은 포함하지 않는다.
+
+## Claude Code 지원
+
+- `codex-function.ps1`이 `codex`와 `claude` 두 런처를 등록한다. 런처는 실행하는 동안만 `VISUAL`, `LILT_ACTIVE`, `LILT_AGENT`를 설정하고 종료 후 복원한다.
+- `lilt.ps1`은 `LILT_AGENT`(기본 `codex`)로 교정 CLI를 고르고 `coach.ps1 -Agent -AgentPath`에 전달한다. 로그 파일 이름은 `agent.log`다.
+- Claude 교정 호출: `claude -p --model sonnet --effort medium --no-session-persistence --tools "" --disable-slash-commands --strict-mcp-config --setting-sources ""`. 표준 출력이 제안이다.
+- `smoke.ps1`에 Claude 백엔드 시나리오를 추가했고 20개 시나리오가 통과했다. 실제 Claude Code에서 Ctrl+G 동작은 아직 실기 확인하지 않았다.

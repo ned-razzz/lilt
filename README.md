@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Write clearer English prompts. Learn as you code.</strong><br>
-  An English writing coach for your Codex CLI workflow on Windows.
+  An English writing coach for your Codex CLI and Claude Code workflow on Windows.
 </p>
 
 <p align="center">
@@ -34,13 +34,13 @@ Lilt brings English practice into the prompt you are already writing. It helps y
 
 ## Using Lilt
 
-After installation, open a new PowerShell terminal and run `codex`.
+After installation, open a new PowerShell terminal and run `codex` or `claude`.
 
-1. Write your prompt in the Codex input box, using English, Korean, or both.
+1. Write your prompt in the Codex or Claude Code input box, using English, Korean, or both.
 2. Press **Ctrl+G** to request a suggestion and open Vim.
 3. Edit the original draft on the left. The right pane initially shows **Coaching...**, then automatically displays the suggested English prompt, Korean explanations of every edit, and recommendations without moving your cursor.
 4. Use **Ctrl+W, L** or **Ctrl+W, H** to move between panes.
-5. Run **`:wqa`** to save and return the edited draft to Codex.
+5. Run **`:wqa`** to save and return the edited draft to the CLI.
 6. Review the prompt and press **Enter** when you are ready to submit it.
 
 Use `:qa!` to discard unsaved edits and exit. Changes you have already saved are not undone. Empty drafts open directly in Vim without a model call.
@@ -49,7 +49,7 @@ The suggestion uses the draft as it was when you pressed Ctrl+G. Editing does no
 
 ## Installation
 
-You need **Windows, PowerShell 7, an authenticated Codex CLI, Git, and Vim**. From the repository root, run:
+You need **Windows, PowerShell 7, an authenticated Codex CLI and/or Claude Code, Git, and Vim**. From the repository root, run:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\install.ps1
@@ -76,6 +76,8 @@ You can then delete the installation folder to remove the remaining files.
 Lilt uses PowerShell and a small CMD wrapper to connect Codex's external-editor shortcut to Vim. The profile launcher sets `VISUAL` while Codex runs, preserves Git's editor through `GIT_EDITOR`, and restores the previous environment when Codex exits. Programs launched by Codex that use `VISUAL` can also invoke Lilt.
 
 For a nonempty draft, Lilt sends UTF-8 text to a separate `codex exec` call using **`gpt-6-luna` with `medium` reasoning**. The coaching call uses an ephemeral session, ignores user configuration, and disables shell tools, plugins, hooks, apps, multi-agent execution, the code host, and web search. These settings apply to the coaching call. Your coding session keeps its model and tool settings.
+
+When you start Claude Code through the `claude` launcher, the same coaching call runs through `claude -p` instead, using **`sonnet` with `medium` effort**, no tools, no slash commands, no MCP servers, no user settings, and no saved session. The launcher tells Lilt which CLI to use through `LILT_AGENT`, which it sets only while that CLI runs.
 
 Vim opens beside a temporary suggestion file while a hidden PowerShell worker makes the model call. A Vim timer updates only the suggestion buffer after the complete response is ready. Vim runs with a clean configuration, modelines and swap files disabled, and the suggestion pane read-only. Exiting Vim stops unfinished coaching and removes temporary coaching files.
 

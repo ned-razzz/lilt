@@ -64,7 +64,7 @@ function Main {
     }
 
     # Resolve dependencies before changing any environment variables.
-    Get-Command pwsh, codex -CommandType Application -ErrorAction Stop | Out-Null
+    Get-Command pwsh -CommandType Application -ErrorAction Stop | Out-Null
     if (-not (Test-Path -LiteralPath $script:coachWrapperPath -PathType Leaf)) {
         throw "Coach wrapper is missing: $script:coachWrapperPath"
     }
@@ -94,7 +94,7 @@ function Main {
     $env:LILT_VIM = $resolvedVimPath
     $env:VISUAL = '"' + $script:coachWrapperPath + '"'
     if (-not $Quiet) {
-        Write-Host 'Prompt coaching enabled in this PowerShell session. Run codex, then press Ctrl+G.'
+        Write-Host 'Prompt coaching enabled in this PowerShell session. Run codex or claude, then press Ctrl+G.'
     }
 }
 

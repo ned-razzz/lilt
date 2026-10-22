@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-# Exercises the installed flow with fake Codex/Vim commands, then checks real Vim behavior.
+# Exercises the installed flow with fake Codex/Claude/Vim commands, then checks real Vim behavior.
 # Keep helper functions visible while putting the execution flow in Main.
 function Test-Condition($condition, [string]$message) {
     if (-not $condition) { throw $message }
@@ -7,7 +7,7 @@ function Test-Condition($condition, [string]$message) {
 
 function Invoke-CoachScenario([string]$scenarioName, [string]$draftText) {
     # Each run starts with fresh captures so assertions only inspect this scenario.
-    foreach ($name in @('codex.json', 'vim.json')) {
+    foreach ($name in @('codex.json', 'claude.json', 'vim.json')) {
         Remove-Item -LiteralPath (Join-Path $script:sandboxPath $name) -Force -ErrorAction SilentlyContinue
     }
     [System.IO.File]::WriteAllText($script:draftFilePath, $draftText, [System.Text.UTF8Encoding]::new($false))
@@ -17,6 +17,9 @@ function Invoke-CoachScenario([string]$scenarioName, [string]$draftText) {
     $script:editorCall = Get-Content -LiteralPath (Join-Path $script:sandboxPath 'vim.json') -Raw | ConvertFrom-Json
     $script:codexCall = if (Test-Path -LiteralPath (Join-Path $script:sandboxPath 'codex.json')) {
         Get-Content -LiteralPath (Join-Path $script:sandboxPath 'codex.json') -Raw | ConvertFrom-Json
+    } else { $null }
+    $script:claudeCall = if (Test-Path -LiteralPath (Join-Path $script:sandboxPath 'claude.json')) {
+        Get-Content -LiteralPath (Join-Path $script:sandboxPath 'claude.json') -Raw | ConvertFrom-Json
     } else { $null }
 }
 
@@ -35,7 +38,7 @@ function Main {
 
     $originalEnvironment = @{}
     foreach ($name in @('PATH', 'VISUAL', 'EDITOR', 'GIT_EDITOR', 'LILT_VIM',
-            'COACH_TEST_DIR', 'COACH_TEST_MODE', 'COACH_REAL_VIM', 'LILT_ACTIVE')) {
+            'COACH_TEST_DIR', 'COACH_TEST_MODE', 'COACH_REAL_VIM', 'LILT_ACTIVE', 'LILT_AGENT')) {
         $originalEnvironment[$name] = [System.Environment]::GetEnvironmentVariable($name, 'Process')
     }
     $previousCoachSession = Get-Variable LiltSession -Scope Global -ErrorAction SilentlyContinue
@@ -85,6 +88,16 @@ if ($tool -eq 'codex') {
     [IO.File]::WriteAllText($record.Output, $suggestion, [Text.UTF8Encoding]::new($false))
     exit 0
 }
+if ($tool -eq 'claude') {
+    # Print mode: the suggestion is written to stdout.
+    [Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    $record.Input = [Console]::In.ReadToEnd()
+    $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:COACH_TEST_DIR 'claude.json') -Encoding utf8
+    Start-Sleep -Milliseconds 500
+    Write-Output "## Suggested Prompt`nPlease fix the code.`n`n## Changes`n- 한국어를 영어로 옮겼습니다."
+    exit 0
+}
 # Capture the editor's files, simulate a user edit, or forward the call to real Vim.
 $fileIndex = [array]::IndexOf($nativeArgs, '--')
 $record.Files = @($nativeArgs | Select-Object -Skip ($fileIndex + 1))
@@ -124,7 +137,7 @@ if ($env:COACH_TEST_MODE -eq 'run-real-vim') {
 exit 0
 '@
         Set-Content -LiteralPath (Join-Path $fakeToolDirectory 'fake-native.ps1') -Value $fakeNative -Encoding utf8
-        foreach ($tool in @('codex', 'vim')) {
+        foreach ($tool in @('codex', 'claude', 'vim')) {
             $shim = "@echo off`r`npwsh.exe -NoLogo -NoProfile -File `"%~dp0fake-native.ps1`" $tool %*`r`nexit /b %ERRORLEVEL%`r`n"
             [System.IO.File]::WriteAllText((Join-Path $fakeToolDirectory "$tool.cmd"), $shim, [System.Text.Encoding]::ASCII)
         }
@@ -144,6 +157,16 @@ exit 0
         }
         Test-Condition ($editorCall.Args -contains '--clean' -and $editorCall.Args -contains '-O') 'Vim split or clean mode is missing.'
         Test-Condition (-not (Test-Path -LiteralPath $codexCall.WorkDir)) 'Correction temp directory was not removed.'
+        $passedScenarioCount++
+
+        # The Claude backend runs in print mode without tools and returns stdout as the suggestion.
+        $env:LILT_AGENT = 'claude'
+        Invoke-CoachScenario 'success' $mixedDraft
+        $env:LILT_AGENT = $null
+        $claudeArgs = @($claudeCall.Args)
+        Test-Condition ($coachExitCode -eq 0 -and $null -eq $codexCall -and $claudeCall.Input.Contains('성능 문제')) 'Claude backend was not used.'
+        Test-Condition ($claudeArgs -contains '-p' -and $claudeArgs -contains '--no-session-persistence' -and $claudeArgs -contains '--tools') 'Claude isolation arguments are missing.'
+        Test-Condition ($editorCall.Suggestion.Contains('## Suggested Prompt')) 'Claude suggestion did not reach the editor.'
         $passedScenarioCount++
 
         # Model failures and unusable responses should still open the original draft for editing.
